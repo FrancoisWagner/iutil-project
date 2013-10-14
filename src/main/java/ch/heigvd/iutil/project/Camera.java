@@ -93,7 +93,7 @@ public class Camera extends JPanel {
 				if (!webcam_image.empty()) {
 					frame.setSize(webcam_image.width() + 40,
 							webcam_image.height() + 60);
-					temp = matToBufferedImage(Utils.getImageFaceDetect(webcam_image));
+					temp = matToBufferedImage(Utils.getMainImageDetect(webcam_image));
 					panel.setImage(temp);
 					panel.repaint();
 				} else {
