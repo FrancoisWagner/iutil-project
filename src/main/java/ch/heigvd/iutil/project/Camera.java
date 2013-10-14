@@ -78,6 +78,7 @@ public class Camera extends JPanel {
 		// Load the native library.
 		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
 		JFrame frame = new JFrame("BasicPanel");
+		frame.setResizable(false);
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.setSize(400, 400);
 		Camera panel = new Camera();
@@ -92,7 +93,7 @@ public class Camera extends JPanel {
 				if (!webcam_image.empty()) {
 					frame.setSize(webcam_image.width() + 40,
 							webcam_image.height() + 60);
-					temp = matToBufferedImage(webcam_image);
+					temp = matToBufferedImage(Utils.getImageFaceDetect(webcam_image));
 					panel.setImage(temp);
 					panel.repaint();
 				} else {
