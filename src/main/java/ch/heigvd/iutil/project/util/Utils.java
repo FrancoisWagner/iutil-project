@@ -1,4 +1,4 @@
-package ch.heigvd.iutil.project;
+package ch.heigvd.iutil.project.util;
 
 import org.opencv.core.Core;
 import org.opencv.core.Mat;
@@ -9,6 +9,10 @@ import org.opencv.core.Scalar;
 import org.opencv.objdetect.CascadeClassifier;
 
 public class Utils {
+	static CascadeClassifier faceDetector = new CascadeClassifier("src/main/resources/lbpcascade_frontalface.xml");
+	static CascadeClassifier fistDetector = new CascadeClassifier("src/main/resources/fist.xml");
+	static CascadeClassifier palmDetector = new CascadeClassifier("src/main/resources/palm.xml");
+	
 	
 	public static Mat getMainImageDetect(Mat image){
 		image = getImageFaceDetect(image);
@@ -22,7 +26,7 @@ public class Utils {
 
 	    // Create a face detector from the cascade file in the resources
 	    // directory.
-	    CascadeClassifier faceDetector = new CascadeClassifier("src/main/resources/lbpcascade_frontalface.xml");
+	     faceDetector = new CascadeClassifier("src/main/resources/lbpcascade_frontalface.xml");
 
 	    // Detect faces in the image.
 		// MatOfRect is a special container class for Rect.
@@ -46,7 +50,7 @@ public class Utils {
 
 	    // Create a face detector from the cascade file in the resources
 	    // directory.
-	    CascadeClassifier faceDetector = new CascadeClassifier("src/main/resources/fist.xml");
+		fistDetector = new CascadeClassifier("src/main/resources/fist.xml");
 
 	    // Detect faces in the image.
 		// MatOfRect is a special container class for Rect.
@@ -70,7 +74,7 @@ public class Utils {
 
 	    // Create a face detector from the cascade file in the resources
 	    // directory.
-	    CascadeClassifier faceDetector = new CascadeClassifier("src/main/resources/palm.xml");
+		palmDetector = new CascadeClassifier("src/main/resources/palm.xml");
 
 	    // Detect faces in the image.
 		// MatOfRect is a special container class for Rect.

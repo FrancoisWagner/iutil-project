@@ -1,4 +1,4 @@
-package ch.heigvd.iutil.project;
+package ch.heigvd.iutil.project.component;
 
 // Import the basic graphics classes.  
 // The problem here is that we read the image with OpenCV into a Mat object.  
@@ -7,10 +7,15 @@ package ch.heigvd.iutil.project;
 // So, how to go from one the other... Here is the way...  
 import java.awt.*;
 import java.awt.image.BufferedImage;
+
 import javax.swing.*;
+
 import org.opencv.core.Core;
 import org.opencv.core.Mat;
+import org.opencv.highgui.Highgui;
 import org.opencv.highgui.VideoCapture;
+
+import ch.heigvd.iutil.project.util.HandDetection;
 
 public class Camera extends JPanel {
 	private static final long serialVersionUID = 1L;
@@ -73,27 +78,36 @@ public class Camera extends JPanel {
 			g.drawImage(temp, temp.getWidth(), 0, 0, temp.getHeight(), 0, 0, temp.getWidth(), temp.getHeight(), this);
 		}
 	}
+	
+	public void play() {
+		
+	}
 
-	public static void main(String arg[]) {
+	public static void main(String arg[]) throws InterruptedException {
 		// Load the native library.
 		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
+		HandDetection handDetection = new HandDetection();
 		JFrame frame = new JFrame("BasicPanel");
 		frame.setResizable(false);
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		frame.setSize(400, 400);
+		frame.setSize(1920, 1080);
 		Camera panel = new Camera();
+		panel.setSize(1920,1080);
 		frame.setContentPane(panel);
 		frame.setVisible(true);
 		Mat webcam_image = new Mat();
 		BufferedImage temp;
 		VideoCapture capture = new VideoCapture(0);
+		capture.set(Highgui.CV_CAP_PROP_FRAME_WIDTH, 1600);
+		capture.set(Highgui.CV_CAP_PROP_FRAME_HEIGHT, 900);
 		if (capture.isOpened()) {
+			Thread.sleep(1000);
 			while (true) {
 				capture.read(webcam_image);
 				if (!webcam_image.empty()) {
-					frame.setSize(webcam_image.width() + 40,
-							webcam_image.height() + 60);
-					temp = matToBufferedImage(Utils.getMainImageDetect(webcam_image));
+					//frame.setSize(webcam_image.width() + 40,webcam_image.height() + 60);
+					//temp = matToBufferedImage(handDetection.getPalmDetect(webcam_image));
+					temp = matToBufferedImage(handDetection.getContourBW(webcam_image));
 					panel.setImage(temp);
 					panel.repaint();
 				} else {
