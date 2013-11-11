@@ -9,14 +9,21 @@
 #include "opencv2/objdetect/objdetect.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
+#include "opencv2/video/background_segm.hpp"
 #include <iostream>
 #include <windows.h>
 
 using namespace cv;
 using namespace std;
 
+const int nmixtures=10;
+const bool shadow=false;
+const int history =1000;
+
+BackgroundSubtractorMOG2 bgs(history,nmixtures,shadow);
+
 /** Global variables */
-String hand_cascade_name = "C:/dev/iutil-project/c++/src/lbpcascade_frontalface.xml";
+String hand_cascade_name = "C:/Users/JUL/dev/iutil-project/c++/src/lbpcascade_frontalface.xml";
 CascadeClassifier hand_cascade;
 
 
@@ -120,6 +127,8 @@ void detectAndDisplay( Mat frame )
 
 int main(int argc, char **argv) {
 
+	Mat background,foreground;
+
 	// Open the video camera no.0
 	VideoCapture cam(0);
 
@@ -132,6 +141,7 @@ int main(int argc, char **argv) {
 	}
 
 	namedWindow("Hand Gesture Detection", CV_WINDOW_AUTOSIZE);
+	namedWindow("FOREGROUND");
 
 	//-- 1. Load the cascades
 	if( !hand_cascade.load( hand_cascade_name ) ){ cout << "--(!)Error loading\n"; return -1; };
@@ -146,6 +156,9 @@ int main(int argc, char **argv) {
 			cout << "Cannot read a frame from video file" << endl;
 			break;
 		}
+
+		bgs.operator()(frame,foreground);
+
 
 
 		flip(frame,frame,1);
@@ -170,6 +183,7 @@ int main(int argc, char **argv) {
 		            Point(erosion_size, erosion_size)));
 
 		imshow("Hand Gesture Detection", skin);
+		imshow("FOREGROUND", foreground);
 
 		if (waitKey(30) == 27) {
 			cout << " esc key is pressed by user" << endl;
