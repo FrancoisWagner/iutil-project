@@ -1,10 +1,12 @@
 /*
  * main.cpp
+
  *
  *  Created on: 6 nov. 2013
  *      Author: JUL
  */
 
+#include "opencv2/objdetect/objdetect.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 #include <iostream>
@@ -12,6 +14,11 @@
 
 using namespace cv;
 using namespace std;
+
+/** Global variables */
+String hand_cascade_name = "C:/dev/iutil-project/c++/src/lbpcascade_frontalface.xml";
+CascadeClassifier hand_cascade;
+
 
 // took from https://github.com/bytefish/opencv/blob/master/misc/skin_color.cpp
 bool R1(int R, int G, int B) {
@@ -90,6 +97,27 @@ Mat ThresholdSkin(const Mat &src) {
     return dst;
 }
 
+/** @function detectAndDisplay */
+void detectAndDisplay( Mat frame )
+{
+	std::vector<Rect> faces;
+	Mat frame_gray;
+
+	cvtColor( frame, frame_gray, CV_BGR2GRAY );
+	equalizeHist( frame_gray, frame_gray );
+
+	//-- Detect faces
+	hand_cascade.detectMultiScale( frame_gray, faces, 1.1, 2, 0|CV_HAAR_SCALE_IMAGE, Size(30, 30) );
+
+	for(unsigned int i = 0; i < faces.size(); i++ )
+	{
+		rectangle(frame, Point(faces[i].x, faces[i].y), Point(faces[i].x + faces[i].width, faces[i].y + faces[i].height), Scalar(0,0,0), CV_FILLED);
+	}
+	//-- Show what you got
+	imshow("Hand Gesture Detection 2", frame );
+}
+
+
 int main(int argc, char **argv) {
 
 	// Open the video camera no.0
@@ -105,6 +133,9 @@ int main(int argc, char **argv) {
 
 	namedWindow("Hand Gesture Detection", CV_WINDOW_AUTOSIZE);
 
+	//-- 1. Load the cascades
+	if( !hand_cascade.load( hand_cascade_name ) ){ cout << "--(!)Error loading\n"; return -1; };
+
 	while (1) {
 
 		Mat frame;
@@ -118,6 +149,8 @@ int main(int argc, char **argv) {
 
 
 		flip(frame,frame,1);
+
+		detectAndDisplay(frame);
 
 		blur(frame, frame, Size(15,15));
 
@@ -146,5 +179,4 @@ int main(int argc, char **argv) {
 	}
 	return 0;
 }
-
 
