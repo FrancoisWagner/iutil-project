@@ -21,7 +21,7 @@ const int DEBUG = false;
 Mat frame,imgSkin;;
 int old = 0;
 RNG rng(12345);
-String hand_cascade_name = "C:/dev/iutil-project/c++/src/lbpcascade_frontalface.xml";
+String hand_cascade_name = "C:/Users/JUL/dev/iutil-project/c++/src/lbpcascade_frontalface.xml";
 CascadeClassifier face_cascade;
 
 Mat detectSkin(Mat frame) {
@@ -131,11 +131,13 @@ void detectContour(Mat img) {
 			}
 
 		}
-		if (cpt_finger == 0 && old != cpt_finger) {
-			cout << "Number of fingers = " << cpt_finger << endl;
-		}
+
 		if (old != cpt_finger) {
-			cout << "Number of fingers = " << cpt_finger + 1 << endl;
+			if(cpt_finger == 0) {
+				cout << "Number of fingers = " << cpt_finger << endl;
+			} else {
+				cout << "Number of fingers = " << cpt_finger + 1 << endl;
+			}
 		}
 
 		old = cpt_finger;
