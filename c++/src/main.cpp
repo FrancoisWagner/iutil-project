@@ -1,5 +1,5 @@
 /*	Title     : HandGestureDetectionUI
- * 	Autors    : François Wagner & Julien Piccaluga
+ * 	Authors   : François Wagner & Julien Piccaluga
  * 	Date      : 18.11.2013
  *  Comments  : This code has been released for our project IUtil.
  */
@@ -11,6 +11,7 @@
 #include "opencv2/video/tracking.hpp"
 #include <iostream>
 #include <windows.h>
+#include <math.h>
 
 using namespace cv;
 using namespace std;
@@ -98,8 +99,6 @@ void detectContour(Mat img) {
 				convexHull(contours[i], hull[i], false);
 				convexityDefects(contours[i], hull[i], convDef[i]);
 
-				// start_index, end_index, farthest_pt_index, fixpt_depth
-
 				for (int k = 0; k < hull[i].size(); k++) {
 					int ind = hull[i][k];
 					hull_points[i].push_back(contours[i][ind]);
@@ -133,10 +132,10 @@ void detectContour(Mat img) {
 
 		}
 		if (cpt_finger == 0 && old != cpt_finger) {
-			cout << "Nombre de doight = " << cpt_finger << endl;
+			cout << "Number of fingers = " << cpt_finger << endl;
 		}
 		if (old != cpt_finger) {
-			cout << "Nombre de doight = " << cpt_finger + 1 << endl;
+			cout << "Number of fingers = " << cpt_finger + 1 << endl;
 		}
 
 		old = cpt_finger;
@@ -163,7 +162,7 @@ int main(int argc, char **argv) {
 	if (!face_cascade.load(hand_cascade_name)) {
 		cout << "--(!)Error loading\n";
 		return -1;
-	};
+	}
 
 	while (1) {
 
