@@ -1,137 +1,156 @@
-/*
- * main.cpp
-
- *
- *  Created on: 6 nov. 2013
- *      Author: JUL
+/*	Title     : HandGestureDetectionUI
+ * 	Autors    : François Wagner & Julien Piccaluga
+ * 	Date      : 18.11.2013
+ *  Comments  : This code has been released for our project IUtil.
  */
-
 #include "opencv2/objdetect/objdetect.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 #include "opencv2/video/background_segm.hpp"
+#include "opencv2/features2d/features2d.hpp"
+#include "opencv2/video/tracking.hpp"
 #include <iostream>
 #include <windows.h>
 
 using namespace cv;
 using namespace std;
 
-const int nmixtures = 9;
-const bool shadow = false;
-const int history = 1000;
+const int DEBUG = false;
 
-BackgroundSubtractorMOG2 bgs(history, nmixtures, shadow);
+Mat frame,imgSkin;;
+int old = 0;
+RNG rng(12345);
+String hand_cascade_name = "C:/Users/JUL/dev/iutil-project/c++/src/lbpcascade_frontalface.xml";
+CascadeClassifier face_cascade;
 
-/** Global variables */
-String hand_cascade_name =
-		"C:/Users/JUL/dev/iutil-project/c++/src/lbpcascade_frontalface.xml";
-CascadeClassifier hand_cascade;
+Mat detectSkin(Mat frame) {
+	Mat hsv, imgSkin;
+	Mat hue, sat, val;
+	Mat hue_plane, sat_plane, val_plane, blue_plane;
+	vector<Mat> hsv_split;
 
-// took from https://github.com/bytefish/opencv/blob/master/misc/skin_color.cpp
-bool R1(int R, int G, int B) {
-	bool e1 = (R > 95) && (G > 40) && (B > 20)
-			&& ((max(R, max(G, B)) - min(R, min(G, B))) > 15)
-			&& (abs(R - G) > 15) && (R > G) && (R > B);
-	bool e2 = (R > 220) && (G > 210) && (B > 170) && (abs(R - G) <= 15)
-			&& (R > B) && (G > B);
-	return (e1 || e2);
-}
+	cvtColor(frame, hsv, CV_BGR2HSV);
 
-// took from https://github.com/bytefish/opencv/blob/master/misc/skin_color.cpp
-bool R2(float Y, float Cr, float Cb) {
-	bool e3 = Cr <= 1.5862 * Cb + 20;
-	bool e4 = Cr >= 0.3448 * Cb + 76.2069;
-	bool e5 = Cr >= -4.5652 * Cb + 234.5652;
-	bool e6 = Cr <= -1.15 * Cb + 301.75;
-	bool e7 = Cr <= -2.2857 * Cb + 432.85;
-	return e3 && e4 && e5 && e6 && e7;
-}
+	split(hsv, hsv_split);
+	hue.create(hsv.size(), hsv.depth());
+	sat.create(hsv.size(), hsv.depth());
+	val.create(hsv.size(), hsv.depth());
+	int ch_hue[] = { 0, 0 };
+	int ch_sat[] = { 1, 0 };
+	int ch_val[] = { 2, 0 };
+	mixChannels(&hsv, 1, &hue, 1, ch_hue, 1);
+	mixChannels(&hsv, 1, &sat, 1, ch_sat, 1);
+	mixChannels(&hsv, 1, &val, 1, ch_val, 1);
 
-// took from https://github.com/bytefish/opencv/blob/master/misc/skin_color.cpp
-bool R3(float H, float S, float V) {
-	return (H < 25) || (H > 230);
-}
+	threshold(hue, hue_plane, 18, UCHAR_MAX, CV_THRESH_BINARY_INV);
+	threshold(sat, sat_plane, 50, UCHAR_MAX, CV_THRESH_BINARY);
+	threshold(val, val_plane, 80, UCHAR_MAX, CV_THRESH_BINARY);
 
-// took from https://github.com/bytefish/opencv/blob/master/misc/skin_color.cpp
-Mat ThresholdSkin(const Mat &src) {
-	// Allocate the result matrix
-	Mat dst = Mat::zeros(src.rows, src.cols, CV_8UC1);
-	// We operate in YCrCb and HSV:
-	Mat src_ycrcb, src_hsv;
-	// OpenCV scales the YCrCb components, so that they
-	// cover the whole value range of [0,255], so there's
-	// no need to scale the values:
-	cvtColor(src, src_ycrcb, CV_BGR2YCrCb);
-	// OpenCV scales the Hue Channel to [0,180] for
-	// 8bit images, make sure we are operating on
-	// the full spectrum from [0,360] by using floating
-	// point precision:
-	src.convertTo(src_hsv, CV_32FC3);
-	cvtColor(src_hsv, src_hsv, CV_BGR2HSV);
-	// And then scale between [0,255] for the rules in the paper
-	// to apply. This uses normalize with CV_32FC3, which may fail
-	// on older OpenCV versions. If so, you probably want to split
-	// the channels first and call normalize independently on each
-	// channel:
-	normalize(src_hsv, src_hsv, 0.0, 255.0, NORM_MINMAX, CV_32FC3);
-	// Iterate over the data:
-	for (int i = 0; i < src.rows; i++) {
-		for (int j = 0; j < src.cols; j++) {
-			// Get the pixel in BGR space:
-			Vec3b pix_bgr = src.ptr<Vec3b>(i)[j];
-			int B = pix_bgr.val[0];
-			int G = pix_bgr.val[1];
-			int R = pix_bgr.val[2];
-			// And apply RGB rule:
-			bool a = R1(R, G, B);
-			// Get the pixel in YCrCB space:
-			Vec3b pix_ycrcb = src_ycrcb.ptr<Vec3b>(i)[j];
-			int Y = pix_ycrcb.val[0];
-			int Cr = pix_ycrcb.val[1];
-			int Cb = pix_ycrcb.val[2];
-			// And apply the YCrCB rule:
-			bool b = R2(Y, Cr, Cb);
-			// Get the pixel in HSV space:
-			Vec3f pix_hsv = src_hsv.ptr<Vec3f>(i)[j];
-			float H = pix_hsv.val[0];
-			float S = pix_hsv.val[1];
-			float V = pix_hsv.val[2];
-			// And apply the HSV rule:
-			bool c = R3(H, S, V);
-			// If not skin, then black
-			if (a && b && c) {
-				dst.at<unsigned char>(i, j) = 255;
-			}
-		}
+	imgSkin = frame.clone();
+	bitwise_and(hue_plane, sat_plane, imgSkin);
+	bitwise_and(imgSkin, val_plane, imgSkin);
+	if(DEBUG == true) {
+		imshow("Hue", hue);
+		imshow("Sat", sat);
+		imshow("Val", val);
+		imshow("Hue_plane", hue_plane);
+		imshow("Sat_plane", sat_plane);
+		imshow("Val_plane", val_plane);
 	}
-	return dst;
+
+	return imgSkin;
 }
 
-/** @function detectAndDisplay */
-void detectAndDisplay(Mat frame) {
-	std::vector<Rect> faces;
+void detectAndHideFace(Mat frame) {
+	std::vector<Rect> rect;
 	Mat frame_gray;
 
 	cvtColor(frame, frame_gray, CV_BGR2GRAY);
 	equalizeHist(frame_gray, frame_gray);
 
 	//-- Detect faces
-	hand_cascade.detectMultiScale(frame_gray, faces, 1.1, 2,
-			0 | CV_HAAR_SCALE_IMAGE, Size(30, 30));
+	face_cascade.detectMultiScale(frame, rect, 1.1, 2, 0, Size(50, 50),
+			Size(400, 400));
 
-	for (unsigned int i = 0; i < faces.size(); i++) {
-		rectangle(frame, Point(faces[i].x, faces[i].y),
-				Point(faces[i].x + faces[i].width,
-						faces[i].y + faces[i].height), Scalar(0, 0, 0),
+	for (unsigned int i = 0; i < rect.size(); i++) {
+		rectangle(frame, Point(rect[i].x, rect[i].y - 80),
+				Point(rect[i].x + rect[i].width,
+						rect[i].y + rect[i].height + 80), Scalar(0, 0, 0),
 				CV_FILLED);
 	}
-	//-- Show what you got
-	imshow("Hand Gesture Detection 2", frame);
+}
+
+void DetectContour(Mat img) {
+	Mat drawing = Mat::zeros(img.size(), CV_8UC3);
+	vector<vector<Point> > contours;
+	vector<vector<Point> > bigContours;
+	vector<Vec4i> hierarchy;
+
+	findContours(img, contours, hierarchy, cv::RETR_LIST,
+			cv::CHAIN_APPROX_SIMPLE, Point());
+	int cpt_finger = 0;
+	if (contours.size() > 0) {
+		vector<vector<int> > hull(contours.size());
+		vector<vector<Vec4i> > convDef(contours.size());
+		vector<vector<Point> > hull_points(contours.size());
+		vector<vector<Point> > defect_points(contours.size());
+
+		for (int i = 0; i < contours.size(); i++) {
+			if (contourArea(contours[i]) > 5000) {
+				convexHull(contours[i], hull[i], false);
+				convexityDefects(contours[i], hull[i], convDef[i]);
+
+				// start_index, end_index, farthest_pt_index, fixpt_depth
+
+				for (int k = 0; k < hull[i].size(); k++) {
+					int ind = hull[i][k];
+					hull_points[i].push_back(contours[i][ind]);
+				}
+
+				for (int k = 0; k < convDef[i].size(); k++) {
+					if (convDef[i][k][3] > 20 * 256) {
+						cpt_finger++;
+						int ind_0 = convDef[i][k][0];
+						int ind_1 = convDef[i][k][1];
+						int ind_2 = convDef[i][k][2];
+						defect_points[i].push_back(contours[i][ind_2]);
+						cv::circle(drawing, contours[i][ind_0], 5,
+								Scalar(0, 255, 0), -1);
+						cv::circle(drawing, contours[i][ind_1], 5,
+								Scalar(0, 255, 0), -1);
+						cv::circle(drawing, contours[i][ind_2], 5,
+								Scalar(0, 0, 255), -1);
+						cv::line(drawing, contours[i][ind_2],
+								contours[i][ind_0], Scalar(0, 0, 255), 1);
+						cv::line(drawing, contours[i][ind_2],
+								contours[i][ind_1], Scalar(0, 0, 255), 1);
+					}
+				}
+
+				if (contourArea(contours[i], 0) > 6000) {
+					drawContours(drawing, contours, i, Scalar(0, 255, 0), 1, 8,
+							vector<Vec4i>(), 0, Point());
+					drawContours(drawing, hull_points, i, Scalar(255, 0, 0), 1,
+							8, vector<Vec4i>(), 0, Point());
+				}
+			}
+
+		}
+		if (cpt_finger == 0 && old != cpt_finger) {
+			cout << "Nombre de doight = " << cpt_finger << endl;
+		}
+		if (old != cpt_finger) {
+			cout << "Nombre de doight = " << cpt_finger + 1 << endl;
+		}
+
+		old = cpt_finger;
+	}
+	namedWindow("Hand Detection", cv::WINDOW_AUTOSIZE);
+	imshow("Hand Detection", drawing);
+
 }
 
 int main(int argc, char **argv) {
-
-	Mat background, foreground;
 
 	// Open the video camera no.0
 	VideoCapture cam(0);
@@ -144,18 +163,13 @@ int main(int argc, char **argv) {
 		cout << "Cannot open video stream" << endl;
 	}
 
-	namedWindow("Hand Gesture Detection", CV_WINDOW_AUTOSIZE);
-	namedWindow("FOREGROUND");
-
-	//-- 1. Load the cascades
-	if (!hand_cascade.load(hand_cascade_name)) {
+	//Load the cascades
+	if (!face_cascade.load(hand_cascade_name)) {
 		cout << "--(!)Error loading\n";
 		return -1;
 	};
 
 	while (1) {
-
-		Mat frame;
 
 		bool isReadSuccess = cam.read(frame);
 
@@ -163,49 +177,31 @@ int main(int argc, char **argv) {
 			cout << "Cannot read a frame from video file" << endl;
 			break;
 		}
-
 		flip(frame, frame, 1);
+		detectAndHideFace(frame);
+		blur(frame, frame, Size(5, 5));
 
-		//Substract BackGround
-		bgs.operator()(frame, foreground);
-		bgs.getBackgroundImage(background);
+		imgSkin = detectSkin(frame);
+		int dilation_size = 3;
+		int erosion_size = 3;
 
-		detectAndDisplay(frame);
 
-		blur(frame, frame, Size(15, 15));
-
-		Mat skin = ThresholdSkin(frame);
-
-		int dilation_size = 1;
-		int erosion_size = 1;
-
-		dilate(skin, skin,
-				getStructuringElement(MORPH_RECT,
-						Size(2 * dilation_size + 1, 2 * dilation_size + 1),
-						Point(dilation_size, dilation_size)));
-
-		erode(skin, skin,
+		erode(imgSkin, imgSkin,
 				getStructuringElement(MORPH_RECT,
 						Size(2 * erosion_size + 1, 2 * erosion_size + 1),
 						Point(erosion_size, erosion_size)));
 
-		for (int i = 0; i < skin.rows; i++) {
-			for (int j = 0; j < skin.cols; j++) {
-				if (foreground.at<unsigned char>(i, j) == 0) {
-					skin.at<unsigned char>(i, j) = 0;
-				}
-			}
-		}
+		dilate(imgSkin, imgSkin,
+				getStructuringElement(MORPH_RECT,
+						Size(2 * dilation_size + 1, 2 * dilation_size + 1),
+						Point(dilation_size, dilation_size)));
 
-		imshow("Hand Gesture Detection", skin);
-		imshow("FOREGROUND", foreground);
+		DetectContour(imgSkin);
 
 		if (waitKey(30) == 27) {
 			cout << " esc key is pressed by user" << endl;
 			break;
 		}
-
 	}
 	return 0;
 }
-
