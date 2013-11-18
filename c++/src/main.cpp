@@ -11,17 +11,15 @@
 #include "opencv2/video/tracking.hpp"
 #include <iostream>
 #include <windows.h>
-#include <math.h>
 
 using namespace cv;
 using namespace std;
 
 const int DEBUG = false;
 
-Mat frame,imgSkin;;
+Mat frame,imgSkin;
 int old = 0;
-RNG rng(12345);
-String hand_cascade_name = "C:/Users/JUL/dev/iutil-project/c++/src/lbpcascade_frontalface.xml";
+String hand_cascade_name = "C:/dev/iutil-project/c++/src/lbpcascade_frontalface.xml";
 CascadeClassifier face_cascade;
 
 Mat detectSkin(Mat frame) {
@@ -175,13 +173,14 @@ int main(int argc, char **argv) {
 			break;
 		}
 		flip(frame, frame, 1);
+		Mat orig = frame.clone();
 		detectAndHideFace(frame);
 		blur(frame, frame, Size(5, 5));
 
 		imgSkin = detectSkin(frame);
 
 		detectContour(imgSkin);
-
+		imshow("Cam image", orig);
 		if (waitKey(30) == 27) {
 			cout << " esc key is pressed by user" << endl;
 			break;
