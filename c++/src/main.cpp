@@ -20,18 +20,16 @@ const int DEBUG = false;
 Mat frame,imgSkin;;
 int old = 0;
 RNG rng(12345);
-String hand_cascade_name = "C:/Users/JUL/dev/iutil-project/c++/src/lbpcascade_frontalface.xml";
+String hand_cascade_name = "C:/dev/iutil-project/c++/src/lbpcascade_frontalface.xml";
 CascadeClassifier face_cascade;
 
 Mat detectSkin(Mat frame) {
 	Mat hsv, imgSkin;
 	Mat hue, sat, val;
 	Mat hue_plane, sat_plane, val_plane, blue_plane;
-	vector<Mat> hsv_split;
 
 	cvtColor(frame, hsv, CV_BGR2HSV);
 
-	split(hsv, hsv_split);
 	hue.create(hsv.size(), hsv.depth());
 	sat.create(hsv.size(), hsv.depth());
 	val.create(hsv.size(), hsv.depth());
@@ -46,7 +44,7 @@ Mat detectSkin(Mat frame) {
 	threshold(sat, sat_plane, 50, UCHAR_MAX, CV_THRESH_BINARY);
 	threshold(val, val_plane, 80, UCHAR_MAX, CV_THRESH_BINARY);
 
-	imgSkin = frame.clone();
+	imgSkin.create(frame.size(), frame.depth());
 	bitwise_and(hue_plane, sat_plane, imgSkin);
 	bitwise_and(imgSkin, val_plane, imgSkin);
 	if(DEBUG == true) {
@@ -80,7 +78,7 @@ void detectAndHideFace(Mat frame) {
 	}
 }
 
-void DetectContour(Mat img) {
+void detectContour(Mat img) {
 	Mat drawing = Mat::zeros(img.size(), CV_8UC3);
 	vector<vector<Point> > contours;
 	vector<vector<Point> > bigContours;
@@ -127,12 +125,10 @@ void DetectContour(Mat img) {
 					}
 				}
 
-				if (contourArea(contours[i], 0) > 6000) {
-					drawContours(drawing, contours, i, Scalar(0, 255, 0), 1, 8,
-							vector<Vec4i>(), 0, Point());
-					drawContours(drawing, hull_points, i, Scalar(255, 0, 0), 1,
-							8, vector<Vec4i>(), 0, Point());
-				}
+				drawContours(drawing, contours, i, Scalar(0, 255, 0), 1, 8,
+						vector<Vec4i>(), 0, Point());
+				drawContours(drawing, hull_points, i, Scalar(255, 0, 0), 1,
+						8, vector<Vec4i>(), 0, Point());
 			}
 
 		}
@@ -182,21 +178,8 @@ int main(int argc, char **argv) {
 		blur(frame, frame, Size(5, 5));
 
 		imgSkin = detectSkin(frame);
-		int dilation_size = 3;
-		int erosion_size = 3;
 
-
-		erode(imgSkin, imgSkin,
-				getStructuringElement(MORPH_RECT,
-						Size(2 * erosion_size + 1, 2 * erosion_size + 1),
-						Point(erosion_size, erosion_size)));
-
-		dilate(imgSkin, imgSkin,
-				getStructuringElement(MORPH_RECT,
-						Size(2 * dilation_size + 1, 2 * dilation_size + 1),
-						Point(dilation_size, dilation_size)));
-
-		DetectContour(imgSkin);
+		detectContour(imgSkin);
 
 		if (waitKey(30) == 27) {
 			cout << " esc key is pressed by user" << endl;
